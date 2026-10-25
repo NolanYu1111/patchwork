@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Skin-tone audit{% endblock %}
+{% block content %}
+<section class="page-head">
+  <p class="eyebrow">Tool 01</p>
+  <h1>Skin-tone audit</h1>
+  <p class="lede">Upload one row per test case. Patchwork never sees your images or your model, only its predictions.</p>
+</section>
+
+{% if error %}<div class="alert bad" role="alert"><b>That didn't work.</b> {{ error }}</div>{% endif %}
+
+<div class="two">
+  <form class="card form" method="post" enctype="multipart/form-data" id="auditForm">
+    <label class="drop" id="drop">
+      <input type="file" name="file" accept=".csv,.tsv,.txt" required id="fileInput">
+      <span class="drop-main">Drop a CSV here or <u>browse</u></span>
+      <span class="drop-sub" id="fileName">Up to 10 MB. Processed in memory, never stored.</span>
+    </label>
+
+    <fieldset>
+      <legend>Columns</legend>
+      <div class="grid3">
+        <label>True label (0/1)<select name="label_col" data-default="label"><option>label</option></select></label>
+        <label>Model score<select name="score_col" data-default="score"><option>score</option></select></label>
+        <label>Fitzpatrick type<select name="group_col" data-default="fitzpatrick"><option>fitzpatrick</option></select></label>
+      </div>
+      <p class="hint">Columns are filled in from your file's header. Scores can be probabilities or raw logits. Skin type can be 1–6 or I–VI.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Skin-tone contrast</legend>
+      <label class="inline">Compare Fitzpatrick I–
+        <select name="split_at">
+          <option value="3">III vs IV–VI</option>
+          <option value="4" selected>IV vs V–VI</option>
+        </select>
+      </label>
+      <p class="hint">Per-band counts are usually too small to interpret, so the main result is a two-group contrast (I–IV vs V–VI, following Groh et al.).</p>
+    </fieldset>
+
+    <button class="btn primary" type="submit">Run audit</button>
+  </form>
+
+  <aside class="card side">
+    <h3>Expected format</h3>
+<pre class="code">case_id,label,score,fitzpatrick
+A001,1,0.82,II
+A002,0,0.14,V
+A003,0,0.37,6</pre>
+    <p><code>label</code> is 1 for the positive class (for example psoriasis) and 0 otherwise.</p>
+    <p class="links">
+      <a href="{{ url_for('audit_demo') }}">See a demo report →</a><br>
+      <a href="{{ url_for('sample', name='predictions') }}">Download the sample CSV</a>
+    </p>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+// Fill the column pickers from the CSV header, so users never type a column name.
+(function () {
+  const input = document.getElementById('fileInput');
+  const drop = document.getElementById('drop');
+  const name = document.getElementById('fileName');
+  const selects = document.querySelectorAll('select[data-default]');
+  const guesses = {
+    label_col: ['label', 'y', 'y_true', 'target', 'diagnosis', 'truth'],
+    score_col: ['score', 'prob', 'probability', 'y_score', 'pred_prob', 'logit', 'p'],
+    group_col: ['fitzpatrick', 'fitzpatrick_type', 'fst', 'skin_type', 'fitzpatrick_scale', 'skin_tone'],
+  };
+  function fill(header) {
+    const cols = header.map(c => c.trim().replace(/^"|"$/g, ''));
+    selects.forEach(sel => {
+      sel.innerHTML = '';
+      cols.forEach(c => sel.add(new Option(c, c)));
+      const hit = cols.find(c => guesses[sel.name].includes(c.toLowerCase()));
+      if (hit) sel.value = hit;
+    });
+  }
+  input.addEventListener('change', () => {
+    const f = input.files[0];
+    if (!f) return;
+    name.textContent = f.name + ' · ' + (f.size / 1024).toFixed(0) + ' KB';
+    drop.classList.add('has-file');
+    f.slice(0, 64 * 1024).text().then(t => {
+      const line = t.split(/\r?\n/)[0];
+      const sep = (line.match(/\t/g) || []).length > (line.match(/,/g) || []).length ? '\t' : (line.includes(';') && !line.includes(',') ? ';' : ',');
+      fill(line.split(sep));
+    });
+  });
+  ['dragover', 'dragenter'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(e => drop.addEventListener(e, () => drop.classList.remove('over')));
+  drop.addEventListener('drop', ev => { ev.preventDefault(); input.files = ev.dataTransfer.files; input.dispatchEvent(new Event('change')); });
+})();
+</script>
+{% endblock %}

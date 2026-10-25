@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Check your skin AI on every skin tone{% endblock %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">For developers, researchers and clinics adopting dermatology AI</p>
+  <h1>Does your skin AI work on <em>every</em> skin tone?</h1>
+  <p class="lede">
+    Our eczema–psoriasis model looked fair on its own test data. On an independent cohort it was at
+    chance on the darkest skin types. Patchwork runs the checks that would have caught it, in a few
+    seconds, on any model's predictions.
+  </p>
+  <div class="cta">
+    <a class="btn primary" href="{{ url_for('audit_demo') }}">Try it on demo data</a>
+    <a class="btn" href="{{ url_for('audit_form') }}">Upload your predictions</a>
+  </div>
+</section>
+
+<section class="tools">
+  <a class="tool" href="{{ url_for('audit_form') }}">
+    <span class="num">01</span>
+    <h2>Skin-tone audit</h2>
+    <p>Upload a CSV of labels, model scores and Fitzpatrick types. Get AUROC for lighter and darker
+    skin with bootstrap confidence intervals, the gap between them, calibration, and a plain-language
+    verdict that never mistakes "not enough data" for "fair".</p>
+    <span class="go">Run an audit →</span>
+  </a>
+  <a class="tool" href="{{ url_for('leakage_form') }}">
+    <span class="num">02</span>
+    <h2>Leakage scan</h2>
+    <p>Find metadata that quietly gives the answer away, like clinician-written descriptors, patients
+    who appear in both training and test sets, and body-site patterns that flip between hospitals.</p>
+    <span class="go">Scan metadata →</span>
+  </a>
+  <a class="tool" href="{{ url_for('power_page') }}">
+    <span class="num">03</span>
+    <h2>Power planner</h2>
+    <p>Before collecting data, see how many darker-skin cases you need for a fairness test that can
+    actually detect a gap, instead of returning an uninformative "no significant difference".</p>
+    <span class="go">Plan a study →</span>
+  </a>
+</section>
+
+<section class="story">
+  <div>
+    <h2>Why this exists</h2>
+    <p>Dermatology AI is often trained on lighter skin and tested on data from the same hospital. Those
+    tests can look excellent and still hide failures. In our study, published at the IEEE BigData 2026
+    High School Symposium, two conclusions flipped when we tested on outside data:</p>
+    <ul class="facts">
+      <li><b>0.711 vs 0.503</b><span>AUROC on Fitzpatrick I–IV vs V–VI on the external cohort. The darker-skin result was no better than a coin flip, and our internal tests had shown no gap at all.</span></li>
+      <li><b>0.699 → 0.451</b><span>Body-site metadata looked useful internally and fell to chance externally, because site patterns reflect who visits a clinic, not the disease.</span></li>
+      <li><b>0.795 → 0.894</b><span>Clinician-recorded descriptors inflated accuracy by leaking the diagnosis they were written alongside.</span></li>
+    </ul>
+    <p>Patchwork packages that evaluation protocol so any team can run it, whatever the condition and whatever the model.</p>
+  </div>
+</section>
+{% endblock %}

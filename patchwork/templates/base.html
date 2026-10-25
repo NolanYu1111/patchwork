@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Patchwork{% endblock %} · Patchwork</title>
+  <meta name="description" content="Patchwork checks whether a dermatology AI model works across every skin tone, before it reaches patients.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+</head>
+<body>
+  <div class="quilt" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <header class="top">
+    <a class="brand" href="{{ url_for('index') }}">
+      <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><g stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 2" fill="none"><rect x="2" y="2" width="13" height="13" rx="2" fill="#eac9a8"/><rect x="17" y="2" width="13" height="13" rx="2" fill="#a8774f"/><rect x="2" y="17" width="13" height="13" rx="2" fill="#d1a37c"/><rect x="17" y="17" width="13" height="13" rx="2" fill="#4a2e1c"/></g></svg>
+      <span>Patchwork</span>
+    </a>
+    <nav>
+      <a href="{{ url_for('audit_form') }}" class="{{ 'on' if path.startswith('/audit') }}">Skin-tone audit</a>
+      <a href="{{ url_for('leakage_form') }}" class="{{ 'on' if path.startswith('/leakage') }}">Leakage scan</a>
+      <a href="{{ url_for('power_page') }}" class="{{ 'on' if path.startswith('/power') }}">Power planner</a>
+      <a href="{{ url_for('about') }}" class="{{ 'on' if path.startswith('/about') }}">About</a>
+    </nav>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  <footer>
+    <p>Patchwork {{ version }} · Built by Ethan Yu and Nolan Yu, Del Norte High School, San Diego · Open source (MIT)</p>
+    <p class="fine">Patchwork evaluates AI models. It is not a diagnostic tool and gives no medical advice. Uploaded files are processed in memory and never stored.</p>
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

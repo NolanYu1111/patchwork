@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Audit report{% endblock %}
+{% macro num(v) %}{{ '—' if v is none else '%.3f' % v }}{% endmacro %}
+{% block content %}
+<section class="page-head">
+  <p class="eyebrow">Skin-tone audit · {{ source }}</p>
+  <h1>Audit report</h1>
+  <p class="meta">{{ r.n_rows }} cases · {{ r.overall.positives }} positive · {{ r.n_rows - r.unknown_tone }} with a skin-type label</p>
+</section>
+
+<div class="verdict {{ r.verdict.level }}">
+  <span class="badge">{{ {'bad':'Disparity','warn':'Inconclusive','good':'No gap detected','unknown':'Insufficient data'}[r.verdict.level] }}</span>
+  <h2>{{ r.verdict.title }}</h2>
+  <p>{{ r.verdict.text }}</p>
+</div>
+
+<section class="stats">
+  {% for g in r.contrast %}
+  <div class="stat {{ 'light' if loop.first else 'dark' }}">
+    <span class="k">{{ g.group }}</span>
+    <span class="v">{{ num(g.auroc) }}</span>
+    <span class="ci">AUROC · 95% CI {{ num(g.ci_low) }}–{{ num(g.ci_high) }}</span>
+    <span class="n">{{ g.n }} cases · {{ g.positives }} positive</span>
+    {% if g.includes_chance %}<span class="tag bad">includes chance</span>{% endif %}
+  </div>
+  {% endfor %}
+  <div class="stat gap">
+    <span class="k">Gap (lighter − darker)</span>
+    <span class="v">{{ '—' if r.gap is none else '%+.3f' % r.gap.point }}</span>
+    <span class="ci">{% if r.gap %}95% CI {{ '%+.3f' % r.gap.ci_low }} to {{ '%+.3f' % r.gap.ci_high }}{% else %}needs both classes in both groups{% endif %}</span>
+    <span class="n">All cases: AUROC {{ num(r.overall.auroc) }}</span>
+  </div>
+</section>
+
+<section class="two charts">
+  <figure class="card">
+    <figcaption>ROC curves by skin-tone group</figcaption>
+    {{ roc_svg | safe }}
+  </figure>
+  <figure class="card">
+    <figcaption>AUROC by Fitzpatrick type, with 95% intervals. Shaded bars are the two-group results; the dashed line is chance.</figcaption>
+    {{ forest_svg | safe }}
+  </figure>
+</section>
+
+<section class="card">
+  <h2 class="h3">What to look at</h2>
+  <ul class="findings">
+    {% for f in r.findings %}<li class="{{ f.level }}">{{ f.text }}</li>{% endfor %}
+  </ul>
+</section>
+
+<section class="card">
+  <h2 class="h3">All numbers</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Group</th><th>Cases</th><th>Positive</th><th>AUROC</th><th>95% CI</th><th>Balanced acc.</th><th>ECE</th></tr></thead>
+    <tbody>
+      {% for g in [r.overall] + r.contrast + r.bands %}
+      <tr class="{{ 'sep' if loop.index == 4 }}{{ ' strong' if loop.index <= 3 }}">
+        <td>{{ g.group if loop.index <= 3 else 'Type ' ~ g.group }}</td><td>{{ g.n }}</td><td>{{ g.positives }}</td>
+        <td>{{ num(g.auroc) }}</td>
+        <td>{% if g.auroc is not none %}{{ num(g.ci_low) }}–{{ num(g.ci_high) }}{% else %}—{% endif %}</td>
+        <td>{{ num(g.balanced_accuracy) }}</td><td>{{ num(g.ece) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="hint">Single Fitzpatrick types usually have too few positive cases to interpret on their own; read them for pattern only.
+  Intervals: percentile bootstrap, {{ r.config.n_boot }} resamples. Gap interval: groups bootstrapped independently.</p>
+</section>
+
+<div class="actions">
+  <button class="btn" id="dl">Download report (JSON)</button>
+  <button class="btn" onclick="window.print()">Print / save as PDF</button>
+  <a class="btn" href="{{ url_for('power_page', auc_light=r.contrast[0].auroc or 0.7, auc_dark=r.contrast[1].auroc or 0.6, n_light=r.contrast[0].n or 100, n_dark=r.contrast[1].n or 100, light_prev=((r.contrast[0].positives / r.contrast[0].n) if r.contrast[0].n else 0.1)|round(3), dark_prev=((r.contrast[1].positives / r.contrast[1].n) if r.contrast[1].n else 0.1)|round(3)) }}">How many cases would settle this? →</a>
+  <a class="btn ghost" href="{{ url_for('audit_form') }}">Audit another file</a>
+</div>
+<script type="application/json" id="report">{{ report_json | safe }}</script>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('dl').addEventListener('click', () => {
+  const blob = new Blob([document.getElementById('report').textContent], {type: 'application/json'});
+  const a = Object.assign(document.createElement('a'), {href: URL.createObjectURL(blob), download: 'patchwork_audit.json'});
+  a.click(); URL.revokeObjectURL(a.href);
+});
+</script>
+{% endblock %}

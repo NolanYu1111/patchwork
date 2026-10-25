@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Leakage scan{% endblock %}
+{% block content %}
+<section class="page-head">
+  <p class="eyebrow">Tool 02</p>
+  <h1>Leakage scan</h1>
+  <p class="lede">Check the clinical metadata you plan to feed a model. Some fields quietly carry the answer, and some only work at the hospital they came from.</p>
+</section>
+
+{% if error %}<div class="alert bad" role="alert"><b>That didn't work.</b> {{ error }}</div>{% endif %}
+
+<div class="two">
+  <form class="card form" method="post" enctype="multipart/form-data">
+    <fieldset>
+      <legend>Development metadata</legend>
+      <label class="drop">
+        <input type="file" name="file" accept=".csv,.tsv,.txt" required class="pick" data-target="dev">
+        <span class="drop-main">Metadata CSV (one row per image or case)</span>
+        <span class="drop-sub">Include the label column. Add patient and split columns to check for patient overlap.</span>
+      </label>
+      <div class="grid3">
+        <label>Label (0/1)<select name="label_col" data-cols="dev" data-guess="label,y,target,diagnosis"><option>label</option></select></label>
+        <label>Patient ID <small>optional</small><select name="patient_col" data-cols="dev" data-guess="patient_id,patient,subject_id,subject" data-optional><option value="">none</option></select></label>
+        <label>Split <small>optional</small><select name="split_col" data-cols="dev" data-guess="split,fold,set,partition" data-optional><option value="">none</option></select></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Shift check <small>optional</small></legend>
+      <label class="drop small">
+        <input type="file" name="external" accept=".csv,.tsv,.txt" class="pick" data-target="ext">
+        <span class="drop-main">External cohort CSV</span>
+        <span class="drop-sub">Same label and category column, from a different hospital or dataset.</span>
+      </label>
+      <label>Category to compare<select name="shift_col" data-cols="dev" data-guess="body_site,site,location,anatomic_site" data-optional><option value="">none</option></select></label>
+    </fieldset>
+
+    <button class="btn primary" type="submit">Scan</button>
+  </form>
+
+  <aside class="card side">
+    <h3>What it checks</h3>
+    <p><b>Label leakage.</b> Each column's out-of-fold AUROC on its own. A field that predicts the diagnosis almost perfectly, or is written by the person who made the diagnosis, is flagged.</p>
+    <p><b>Patient overlap.</b> The same person in training and test inflates every score.</p>
+    <p><b>Association flips.</b> Whether each category leans the same way in both cohorts. In our study head-and-neck leaned eczema at one site and psoriasis at the other.</p>
+    <p class="links"><a href="{{ url_for('leakage_demo') }}">See a demo scan →</a><br>
+      <a href="{{ url_for('sample', name='metadata_development') }}">Sample development CSV</a> ·
+      <a href="{{ url_for('sample', name='metadata_external') }}">sample external CSV</a></p>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('input.pick').forEach(input => {
+  input.addEventListener('change', () => {
+    const f = input.files[0]; if (!f) return;
+    input.closest('.drop').classList.add('has-file');
+    input.closest('.drop').querySelector('.drop-sub').textContent = f.name;
+    if (input.dataset.target !== 'dev') return;
+    f.slice(0, 64 * 1024).text().then(t => {
+      const line = t.split(/\r?\n/)[0];
+      const cols = line.split(line.includes('\t') ? '\t' : ',').map(c => c.trim().replace(/^"|"$/g, ''));
+      document.querySelectorAll('select[data-cols="dev"]').forEach(sel => {
+        sel.innerHTML = '';
+        if (sel.hasAttribute('data-optional')) sel.add(new Option('none', ''));
+        cols.forEach(c => sel.add(new Option(c, c)));
+        const g = sel.dataset.guess.split(',');
+        const hit = cols.find(c => g.includes(c.toLowerCase()));
+        if (hit) sel.value = hit;
+      });
+    });
+  });
+});
+</script>
+{% endblock %}

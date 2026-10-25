@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}About{% endblock %}
+{% block content %}
+<section class="page-head">
+  <p class="eyebrow">About</p>
+  <h1>Built from a result we didn't expect</h1>
+</section>
+<article class="card prose">
+  <p>We trained models to tell eczema from psoriasis, two scaly rashes that even dermatopathologists often disagree on. Our development data came from one public dataset of Indian skin disorders, spanning Fitzpatrick types III–VI. We split by patient, removed near-duplicates, checked for colour shortcuts and cross-validated every model. Internally, nothing looked wrong: no skin-tone gap, even in a deliberately harder test built to probe distribution shift.</p>
+  <p>Then we tested on Google's independent SCIN cohort. On Fitzpatrick I–IV the image model reached AUROC 0.711. On V–VI it reached 0.503, which is chance. Body-site metadata that had helped internally fell to chance too, because which body parts appear in a dataset reflects who walks into that clinic. And clinician-written lesion descriptors had inflated our metadata model by leaking the diagnosis.</p>
+  <p>Patchwork turns the checks that caught those problems into a tool anyone can run. It takes predictions rather than models, so it works with any framework, any condition and any vendor's software.</p>
+
+  <h2>What Patchwork is not</h2>
+  <p>It is not a diagnostic tool and does not look at skin images. It evaluates whether someone else's AI is safe to trust across skin tones. A "no gap detected" result on one dataset is never a guarantee: test on an independent cohort, and on more than one if you can.</p>
+
+  <h2>Method in brief</h2>
+  <ul>
+    <li><b>AUROC, not accuracy.</b> When most cases are one class, guessing the majority already scores well.</li>
+    <li><b>Intervals, not p-values.</b> Percentile bootstrap (2,000 resamples) for each group; the two groups are bootstrapped independently for the gap.</li>
+    <li><b>Two-group contrast.</b> Fitzpatrick I–IV vs V–VI is the primary comparison because single types rarely have enough positive cases.</li>
+    <li><b>Calibration.</b> Expected calibration error with 10 equal-width bins.</li>
+    <li><b>Leakage.</b> Out-of-fold univariate AUROC per metadata column, descriptor-name heuristics, and patient overlap across splits.</li>
+    <li><b>Shift.</b> Each category's lean toward the positive class, compared between cohorts.</li>
+    <li><b>Power.</b> Hanley–McNeil standard errors with a normal approximation.</li>
+  </ul>
+
+  <h2>Paper</h2>
+  <p>E. Yu, N. Yu and H. Homayouni, "External Validation Reverses Internal Findings in Multimodal Eczema-Psoriasis Classification Across Skin Tones," IEEE BigData 2026 High School Symposium (Best Paper Finalist). Research code: <a href="https://github.com/ethany8909/machine-learning-in-eczema-detection-main">github.com/ethany8909/machine-learning-in-eczema-detection-main</a>.</p>
+
+  <h2>Privacy</h2>
+  <p>Files are read into memory for one request and discarded. Nothing is logged, stored or sent anywhere. The demo data are simulated and contain no real patients.</p>
+</article>
+{% endblock %}

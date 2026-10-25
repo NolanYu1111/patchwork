@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Leakage scan{% endblock %}
+{% block content %}
+{% set bad = s.columns | selectattr('level', 'equalto', 'bad') | list %}
+<section class="page-head">
+  <p class="eyebrow">Leakage scan · {{ source }}</p>
+  <h1>Metadata report</h1>
+  <p class="meta">{{ s.n_rows }} rows · positive rate {{ '%.0f' % (s.positive_rate * 100) }}% · {{ s.columns | length }} columns scanned</p>
+</section>
+
+<div class="verdict {{ 'bad' if bad or (s.overlap and s.overlap.in_multiple_splits) else 'good' }}">
+  <span class="badge">{{ 'Review needed' if bad or (s.overlap and s.overlap.in_multiple_splits) else 'No red flags' }}</span>
+  <h2>
+    {% if bad %}{{ bad | length }} column{{ 's' if bad | length > 1 }} may leak the diagnosis{% else %}No column looks like it leaks the label{% endif %}{% if s.overlap and s.overlap.in_multiple_splits %}, and {{ s.overlap.in_multiple_splits }} patients cross splits{% endif %}
+  </h2>
+  <p>A flag is a prompt to check where a field came from, not proof of leakage. Ask: would this value exist at the moment a patient's photo is taken, before anyone has made a diagnosis?</p>
+</div>
+
+<section class="card">
+  <h2 class="h3">Columns, strongest signal first</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Column</th><th>Signal (AUROC alone)</th><th>Missing</th><th>Distinct</th><th>Notes</th></tr></thead>
+    <tbody>
+    {% for c in s.columns %}
+      <tr class="lvl-{{ c.level }}">
+        <td><code>{{ c.column }}</code></td>
+        <td>{% if c.auroc is not none %}<span class="bar"><i style="width: {{ ((c.auroc - 0.5) * 200) | round(0) }}%"></i></span> {{ '%.3f' % c.auroc }}{% else %}—{% endif %}</td>
+        <td>{{ '%.0f' % (c.missing * 100) }}%</td>
+        <td>{{ c.distinct }}</td>
+        <td>{% for f in c.flags %}<span class="tag {{ c.level }}">{{ f }}</span>{% else %}<span class="muted">—</span>{% endfor %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="hint">Signal is the out-of-fold AUROC of the column on its own (categories are target-encoded on other folds), folded so 0.5 means none. Columns above {{ 0.85 }} are flagged regardless of name.</p>
+</section>
+
+<section class="two">
+  <div class="card">
+    <h2 class="h3">Patient overlap</h2>
+    {% if s.overlap %}
+      {% if s.overlap.in_multiple_splits %}
+        <p class="big bad">{{ s.overlap.in_multiple_splits }} of {{ s.overlap.patients }} patients appear in more than one split.</p>
+        <p>Split by patient, not by image, so a model can't score well by recognising people. Examples: {% for p in s.overlap.examples %}<code>{{ p }}</code> {% endfor %}</p>
+      {% else %}
+        <p class="big good">No patient appears in more than one split.</p>
+      {% endif %}
+    {% else %}
+      <p class="muted">Add patient ID and split columns to run this check.</p>
+    {% endif %}
+  </div>
+  <div class="card">
+    <h2 class="h3">Duplicates</h2>
+    {% if s.duplicate_rows %}<p class="big warn">{{ s.duplicate_rows }} rows are exact duplicates of another row.</p>
+    <p>For metadata-only rows this is common (many patients share an age, sex and site), but for image tables it usually means the same image was added twice.</p>
+    {% else %}<p class="big good">No exact duplicate rows.</p>{% endif %}
+  </div>
+</section>
+
+{% if shift %}
+<section class="card">
+  <h2 class="h3">Shift check: does <code>{{ shift.column }}</code> mean the same thing in both cohorts?</h2>
+  <p>{{ shift.agree_count }} of {{ shift.judged_count }} categories with enough cases lean the same direction in both cohorts.
+  A category that leans toward one diagnosis at one hospital and the other diagnosis elsewhere teaches a model about the clinic, not the disease.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Category</th><th>Development lean</th><th>External lean</th><th>Cases (dev / ext)</th><th></th></tr></thead>
+    <tbody>
+    {% for row in shift.rows %}
+      <tr class="{{ '' if row.enough else 'faint' }}">
+        <td>{{ row.category }}</td>
+        <td><span class="lean {{ 'pos' if row.lean_dev > 0 else 'neg' }}">{{ '%+.1f' % row.lean_dev }} pts</span></td>
+        <td><span class="lean {{ 'pos' if row.lean_ext > 0 else 'neg' }}">{{ '%+.1f' % row.lean_ext }} pts</span></td>
+        <td>{{ row.n_dev }} / {{ row.n_ext }}</td>
+        <td>{% if not row.enough %}<span class="muted">too few cases</span>{% elif row.neutral %}<span class="tag">near zero</span>{% elif row.agrees %}<span class="tag ok">agrees</span>{% else %}<span class="tag bad">flips</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="hint">Lean = the category's positive rate minus the cohort's overall positive rate, in percentage points.
+  {% if shift.only_dev %}Only in development: {{ shift.only_dev | join(', ') }}. {% endif %}
+  {% if shift.only_ext %}Only in external: {{ shift.only_ext | join(', ') }} (harmonise names before training, or these encode as silent zeros).{% endif %}</p>
+</section>
+{% endif %}
+
+<div class="actions"><a class="btn ghost" href="{{ url_for('leakage_form') }}">Scan another file</a></div>
+{% endblock %}

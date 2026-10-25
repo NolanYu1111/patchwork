@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Power planner{% endblock %}
+{% block content %}
+{% set i = p.inputs %}
+<section class="page-head">
+  <p class="eyebrow">Tool 03</p>
+  <h1>Power planner</h1>
+  <p class="lede">A fairness test on too few darker-skin cases will almost always say "no significant gap", whether or not one exists. Find out how many cases you need first.</p>
+</section>
+
+<div class="two">
+  <form class="card form" method="get" id="pf">
+    <fieldset>
+      <legend>Expected performance</legend>
+      <div class="grid2">
+        <label>AUROC, lighter skin <output>{{ '%.2f' % i.auc_light }}</output>
+          <input type="range" name="auc_light" min="0.5" max="0.99" step="0.01" value="{{ i.auc_light }}"></label>
+        <label>AUROC, darker skin <output>{{ '%.2f' % i.auc_dark }}</output>
+          <input type="range" name="auc_dark" min="0.5" max="0.99" step="0.01" value="{{ i.auc_dark }}"></label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Test set you have (or plan)</legend>
+      <div class="grid2">
+        <label>Lighter-skin cases<input type="number" name="n_light" min="10" value="{{ i.n_light }}"></label>
+        <label>Darker-skin cases<input type="number" name="n_dark" min="10" value="{{ i.n_dark }}"></label>
+        <label>Share positive, lighter<input type="number" name="light_prev" min="0.01" max="0.99" step="0.001" value="{{ i.light_prev }}"></label>
+        <label>Share positive, darker<input type="number" name="dark_prev" min="0.01" max="0.99" step="0.001" value="{{ i.dark_prev }}"></label>
+      </div>
+    </fieldset>
+    <button class="btn primary" type="submit">Update</button>
+    <p class="hint">Defaults are the external cohort from our study: 465 lighter-skin cases (39 psoriasis) and 106 darker-skin cases (18 psoriasis).</p>
+  </form>
+
+  <div class="card result">
+    <span class="k">Chance of detecting a {{ '%.2f' % (i.auc_light - i.auc_dark)|abs }} AUROC gap</span>
+    <span class="v {{ 'good' if p.power >= 0.8 else ('warn' if p.power >= 0.5 else 'bad') }}">{{ '%.0f' % (p.power * 100) }}%</span>
+    <p>With {{ p.positives.dark }} positive darker-skin cases, the darker-skin AUROC interval will be about
+      <b>±{{ '%.2f' % (p.width_dark / 2) }}</b> wide (lighter skin: ±{{ '%.2f' % (p.width_light / 2) }}).</p>
+    {% if p.needed_same_mix %}
+    <p>For 80% power with the same skin-tone mix you need about <b>{{ '{:,}'.format(p.needed_same_mix.total) }}</b> cases
+      ({{ '{:,}'.format(p.needed_same_mix.n_dark) }} darker-skin, {{ p.needed_same_mix.pos_dark }} of them positive).</p>
+    {% if p.needed_balanced and p.needed_balanced.total < p.needed_same_mix.total %}
+    <p>A tone-balanced test set needs only <b>{{ '{:,}'.format(p.needed_balanced.total) }}</b>, half from each group.</p>
+    {% endif %}
+    {% else %}
+    <p>Set the two AUROCs to different values to compute a sample size.</p>
+    {% endif %}
+    {{ curve_svg | safe }}
+  </div>
+</div>
+<section class="card">
+  <h2 class="h3">How this is calculated</h2>
+  <p>Standard error of each group's AUROC from Hanley &amp; McNeil (1982), which depends on the AUROC and the number of positive and negative cases. The groups contain different people, so the gap's standard error is the root sum of squares. Power is the probability that a 95% interval for the gap excludes zero if the gap is real. This is an approximation for planning; the audit itself uses the bootstrap.</p>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('#pf input[type=range]').forEach(r => r.addEventListener('input', () => { r.previousElementSibling.value = (+r.value).toFixed(2); }));
+document.querySelectorAll('#pf input[type=range]').forEach(r => r.addEventListener('change', () => document.getElementById('pf').submit()));
+</script>
+{% endblock %}

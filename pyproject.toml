@@ -1,0 +1,11 @@
+[project]
+name = "patchwork"
+version = "1.0.0"
+description = "Skin-tone-stratified audits, leakage scans and power planning for dermatology AI"
+authors = [{ name = "Ethan Yu" }, { name = "Nolan Yu" }]
+license = { text = "MIT" }
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
