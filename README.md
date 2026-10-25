@@ -143,10 +143,11 @@ Eczema-Psoriasis Classification Across Skin Tones," *IEEE BigData 2026 High Scho
 
 ### Use of AI
 
-Anthropic's Claude helped write and refactor parts of the code, the page layouts and this README.
-The research the app is built on, its design (which checks to include, the thresholds, the
-two-group contrast, how verdicts are worded), the testing against our real study results and all
-final decisions are our own.
+Anthropic's Claude wrote most of the initial code (statistics, web app, templates, tests, demo data)
+and this README, working from our research paper and direction. The research Patchwork is built on,
+the methods every check comes from, checking the app's numbers against our real study results,
+review and testing, and all final decisions are our own. Patchwork does not call any AI service
+while running.
 
 ## Limits
 
